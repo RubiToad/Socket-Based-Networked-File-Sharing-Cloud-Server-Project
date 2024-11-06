@@ -1,10 +1,10 @@
 import socket
-#from ntp_offset_module import *  # add for timestamps
+from network_analysis import *  # add for timestamps
 host = '10.162.0.2'
 port = 3300
 BUFFER_SIZE = 1024
 dashes = '----> '
-#ntp_offset = get_time_offset()  # add for timestamps
+ntp_offset = get_time_offset()  # add for timestamps
 
 with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as server_tcp:
   server_tcp.bind((host,port))
@@ -15,7 +15,7 @@ with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as server_tcp:
     #establish client connection
     connection, addr = server_tcp.accept()
     with connection:
-#print(f'[*] Accepted at {current_client_time(ntp_offset)}') # add for timestamps
+      print(f'[*] Accepted at {current_client_time(ntp_offset)}') # add for timestamps
       print(f'[*] Established connection from IP {addr[0]} port: {addr[1]}')
       while True:
         #receive bytes
