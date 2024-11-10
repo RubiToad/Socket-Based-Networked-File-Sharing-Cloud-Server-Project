@@ -1,4 +1,4 @@
-# ntp_offset_module.py
+# network_analysis.py
 import ntplib
 from datetime import datetime, date, time, timedelta
 #Step 6
