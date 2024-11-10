@@ -1,6 +1,7 @@
-# ntp_offset_module.py
+# network_analysis.py
 import ntplib
 from datetime import datetime, date, time, timedelta
+#Step 6
 """
 offset is the difference between local clock and  NTP server clock
 which is the amount to correct the local clock by in seconds to 
