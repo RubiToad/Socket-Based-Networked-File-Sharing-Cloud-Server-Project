@@ -1,13 +1,15 @@
 import socket
 from network_analysis import *  # add for timestamps
-host = '10.162.0.2'
+host = '10.142.0.2'
 port = 3300
 BUFFER_SIZE = 1024
 dashes = '----> '
 ntp_offset = get_time_offset()  # add for timestamps
 
 with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as server_tcp:
-  server_tcp.bind((host, port))
+  server_tcp.bind((host,port))
+
+  bytes_recieved = 0 #tracking bytes recieved for upload speed calculation
 
   while True:
 
@@ -22,6 +24,8 @@ with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as server_tcp:
       while True:
         #receive bytes
         data = connection.recv(BUFFER_SIZE)
+        #add bytes recieved to tracker for calcuation
+        bytes_recieved += len(data)
         #verify received data
         if not data:
           break
