@@ -8,9 +8,10 @@ ntp_offset = get_time_offset()  # add for timestamps
 
 with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as server_tcp:
   server_tcp.bind((host,port))
-
-  bytes_recieved = 0 #tracking bytes recieved for upload speed calculation
-
+  #tracking bytes recieved for upload speed calculation
+  bytes_recieved = 0 
+  #tracking bytes sent for download speed calculation 
+  bytes_sent = 0
   while True:
 
     server_tcp.listen(6)
@@ -24,8 +25,10 @@ with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as server_tcp:
       while True:
         #receive bytes
         data = connection.recv(BUFFER_SIZE)
-        #add bytes recieved to tracker for calcuation
+        #add bytes recieved to tracker for upload speed calcuation
         bytes_recieved += len(data)
+        #add bytes sent to tracker for download speed calculation
+        bytes_sent += len(data)
         #verify received data
         if not data:
           break

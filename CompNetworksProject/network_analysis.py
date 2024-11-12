@@ -1,7 +1,7 @@
 # network_analysis.py
 import ntplib
 from datetime import datetime, date, time, timedelta
-from server import bytes_recieved, time_difference
+from server import bytes_recieved, bytes_sent, time_difference
 #Step 6
 """
 offset is the difference between local clock and  NTP server clock
@@ -27,9 +27,14 @@ def current_client_time(ntp_offset):
     return f'{new_datetime}'
     #print(get_time_offset())
 
-# makes a calculation using the time offset to get the upload speed in MB/s
-def get_upload_speed(bytes_recieved, time_difference):
-    bytes_MB = bytes_recieved / (1024 * 1024)  # converts the bytes into MB/s
-
-    speed = bytes_MB / time_difference # gets the speed in MB/s
+# makes a calculation using the bytes recieved and time offset to get the upload speed in MB/s
+def get_upload_speed():
+    bytes_MB = bytes_recieved / (1024 * 1024)  # converts the bytes into MB
+    speed = bytes_MB / time_difference # calculates the upload speed in MB/s
     return speed
+
+# makes a calculation using the bytes sent and time offset to get the download speed in MB/s
+def get_download_speed():
+    dlBytes_MB = bytes_sent / (1024 * 1024) # converts the bytes into MB
+    download_speed = dlBytes_MB / time_difference # calculates the download speed in MB/s
+    return download_speed

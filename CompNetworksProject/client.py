@@ -20,7 +20,8 @@ def setup_connection(message):
     client_tcp.send(data_to_send.encode('utf-8')) # byte object required
     data = client_tcp.recv(BUFFER_SIZE)
     yield print(f'The message received from the server: {data.decode("utf-8")}')
-    yield print(f'The upload speed was: {get_upload_speed}')
+    yield print(f'The upload speed was: {get_upload_speed} MB/s')
+    yield print(f'The download speed was: {get_download_speed} MB/s')
 
 if __name__ == '__main__':
   while True:
