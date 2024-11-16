@@ -19,6 +19,7 @@ def get_time_offset():
         print(e)
     return resp.offset
 
+
 def current_client_time(ntp_offset):
     current_date = datetime.now().date()
     initial_time = datetime.now().time()
