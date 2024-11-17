@@ -1,7 +1,9 @@
 import socket
+import os
 from network_analysis import *
 
-host = '35.196.227.253'
+
+host = '34.174.104.232'
 port = 3300
 
 
@@ -23,9 +25,81 @@ def setup_connection(message):
     yield print(f'The upload speed was: {get_upload_speed} MB/s')
     yield print(f'The download speed was: {get_download_speed} MB/s')
 
+
+def upload_file(file_path):
+  """Function to upload a file (text, image, or audio) to the server."""
+  if not os.path.exists(file_path):
+    print(f"File {file_path} does not exist.")
+    return
+
+  file_name = os.path.basename(file_path)
+  file_size = os.path.getsize(file_path)
+
+  # Determine the file type based on its extension
+  file_type = 'text'
+  if file_path.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
+    file_type = 'image'
+  elif file_path.lower().endswith(('.mp3', '.wav', '.aac')):
+    file_type = 'audio'
+
+  with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_tcp:
+    client_tcp.connect((host, port))
+
+    # Get the current timestamp and format it
+    client_send_time = datetime.utcnow() + timedelta(seconds=ntp_offset)
+    client_send_time_str = client_send_time.strftime('%Y-%m-%d %H:%M:%S.%f')
+
+    # Prepare the metadata to send to the server
+    metadata = f"UPLOAD {file_name} {file_size} {file_type}||{client_send_time_str}"
+    client_tcp.send(metadata.encode())
+
+    # Wait for server acknowledgment
+    ack = client_tcp.recv(BUFFER_SIZE).decode()
+    if ack != 'READY':
+      print("Server not ready for upload.")
+      return
+
+    # Upload the file in chunks
+    print(f"Uploading {file_name}...")
+    with open(file_path, 'rb') as file:
+      while True:
+        chunk = file.read(BUFFER_SIZE)
+        if not chunk:
+          break
+        client_tcp.send(chunk)
+
+    print(f"{file_name} uploaded successfully.")
+    client_tcp.send(b'DONE')
+
+    # Receive server response and print speeds
+    response = client_tcp.recv(BUFFER_SIZE).decode()
+    print(f"The message received from the server: {response}")
+    print(f"The upload speed was: {get_upload_speed()} MB/s")
+    print(f"The download speed was: {get_download_speed()} MB/s")
+
+def display_menu():
+  """Display a basic UI for interacting with the client."""
+  print("\n--- File Sharing Client ---")
+  print("1. Upload a File")
+  print("2. Send a Message")
+  print("3. Exit")
+
 if __name__ == '__main__':
   while True:
-    message = input('enter a message or q for quit: ')
-    if message == 'q':
-      quit()
-    next(setup_connection(message))
+    display_menu()
+    choice = input("Enter your choice: ")
+
+    if choice == '1':
+      file_path = input("Enter the path of the file to upload: ")
+      upload_file(file_path)
+    elif choice == '2':
+      message = input("Enter a message or 'q' to quit: ")
+      if message == 'q':
+        quit()
+      else:
+        next(setup_connection(message))
+    elif choice == '3':
+      print("Exiting...")
+      break
+    else:
+      print("Invalid choice. Please try again.")
