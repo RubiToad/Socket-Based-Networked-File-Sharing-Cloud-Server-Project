@@ -1,9 +1,11 @@
 import socket
 import os
+from datetime import datetime, timedelta
+
 from network_analysis import *
 
 
-host = '34.174.104.232'
+host = '35.203.120.179'
 port = 3300
 
 
