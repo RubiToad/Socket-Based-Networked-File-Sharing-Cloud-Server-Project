@@ -1,14 +1,38 @@
 import socket
+from datetime import datetime, timedelta
+import os
 from network_analysis import *  # add for timestamps
+
 host = '10.162.0.2'
 port = 3300
 BUFFER_SIZE = 1024
 dashes = '----> '
 ntp_offset = get_time_offset()  # add for timestamps
 
-with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as server_tcp:
-  server_tcp.bind((host, port))
+#files are saved in uploads folder
+UPLOAD_DIR = 'uploads'
+if not os.path.exists(UPLOAD_DIR):
+    os.makedirs(UPLOAD_DIR)
 
+
+def save_file(connection, file_name, file_size):
+  #file saved to uploads folder
+  received_size = 0
+  with open(os.path.join(UPLOAD_DIR, file_name), 'wb') as f:
+    while received_size < file_size:
+      chunk = connection.recv(BUFFER_SIZE)
+      if not chunk:
+        break
+      f.write(chunk)
+      received_size += len(chunk)
+  return received_size
+
+with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as server_tcp:
+  server_tcp.bind((host,port))
+  #tracking bytes recieved for upload speed calculation
+  bytes_recieved = 0
+  #tracking bytes sent for download speed calculation
+  bytes_sent = 0
   while True:
 
     server_tcp.listen(6)
@@ -22,26 +46,26 @@ with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as server_tcp:
       while True:
         #receive bytes
         data = connection.recv(BUFFER_SIZE)
+        #add bytes recieved to tracker for upload speed calcuation
+        bytes_recieved += len(data)
+        #add bytes sent to tracker for download speed calculation
+        bytes_sent += len(data)
         #verify received data
         if not data:
           break
 
-        #split data and send time
-        client_data = data.decode('utf-8').split('||')
-        client_timestamp_str, client_message = client_data[0], client_data[1]
-        client_timestamp = datetime.strptime(client_timestamp_str, '%Y-%m-%d %H:%M:%S.%f')
-        server_receive_time = datetime.now() + timedelta(seconds=ntp_offset)
+        try:
+          message = data.decode('utf-8').split('||')
+          if message[0].startswith("UPLOAD"):
+            #split data
+            metadata = message[0].split()
+            file_name = metadata[1]
+            file_size = int(metadata[2])
+            file_type = metadata[3]
 
-        #subtract send time from receive time
-        time_difference = server_receive_time - client_timestamp
-        print(f'[*] {server_receive_time} - Data received Test: {client_message}')
-        print(f'[*] Time taken for data to send: {time_difference.total_seconds()} seconds')
+            #ACK metadata receipt
+            connection.send(b'READY')
 
-<<<<<<< Updated upstream
-        #convert to string
-        #print('[*] Data received: {}'.format(data.decode('utf-8')))
-        connection.send(dashes.encode('utf-8') + data)
-=======
             #FILE SAVE LOGIC
             print(f"[*] Receiving {file_name} ({file_type}) of size {file_size} bytes")
             saved_size = save_file(connection, file_name, file_size)
@@ -83,4 +107,3 @@ with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as server_tcp:
         except Exception as e:
           print(f"[!] Error processing data: {e}")
           connection.send(b'Error processing data.')
->>>>>>> Stashed changes
