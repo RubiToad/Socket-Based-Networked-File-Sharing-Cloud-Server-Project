@@ -75,6 +75,7 @@ with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as server_tcp:
             else:
               print(f"[!] Error: Received size {saved_size} does not match expected size {file_size}")
               connection.send(b'File upload failed.')
+
             #FILE DELETE LOGIC
           elif message[0].startswith("DELETE"):
             metadata = message[0].split()

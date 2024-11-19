@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from network_analysis import *
 
 
+
 host = '10.162.0.2'
 port = 3300
 
@@ -79,7 +80,6 @@ def upload_file(file_path):
     print(f"The upload speed was: {get_upload_speed()} MB/s")
     print(f"The download speed was: {get_download_speed()} MB/s")
 
-
 def delete_file(file_name):
   with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_tcp:
     client_tcp.connect((host, port))
@@ -91,7 +91,6 @@ def delete_file(file_name):
     client_tcp.send(metadata.encode())
     response = client_tcp.recv(BUFFER_SIZE).decode()
     print(f"Server response: {response}")
-
 
 def display_menu():
   """Display a basic UI for interacting with the client."""
