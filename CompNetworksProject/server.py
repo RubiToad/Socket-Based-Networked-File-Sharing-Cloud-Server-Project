@@ -30,8 +30,8 @@ def save_file(connection, file_name, file_size):
 with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as server_tcp:
   server_tcp.bind((host,port))
   #tracking bytes recieved for upload speed calculation
-  bytes_recieved = 0 
-  #tracking bytes sent for download speed calculation 
+  bytes_recieved = 0
+  #tracking bytes sent for download speed calculation
   bytes_sent = 0
   while True:
 
@@ -66,15 +66,31 @@ with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as server_tcp:
             #ACK metadata receipt
             connection.send(b'READY')
 
-            #save file
+            #FILE SAVE LOGIC
             print(f"[*] Receiving {file_name} ({file_type}) of size {file_size} bytes")
             saved_size = save_file(connection, file_name, file_size)
-            if saved_size == file_size:
+            if saved_size == file_size: #check that enough space is allocated?
               print(f"[*] {file_name} received and saved successfully.")
               connection.send(b'File uploaded successfully.')
             else:
               print(f"[!] Error: Received size {saved_size} does not match expected size {file_size}")
               connection.send(b'File upload failed.')
+
+            #FILE DELETE LOGIC
+          elif message[0].startswith("DELETE"):
+            metadata = message[0].split()
+            file_name = metadata[1]
+            file_path = os.path.join(UPLOAD_DIR, file_name)
+            #use os.remove() to delete file from server
+            if os.path.exists(file_path):
+              os.remove(file_path)
+              print(f"[*] File {file_name} deleted successfully.")
+              connection.send(f"File {file_name} deleted successfully.".encode())
+            else: #file doesn't exist so can't be deleted
+              print(f"[!] File {file_name} does not exist.")
+              connection.send(f"File {file_name} does not exist.".encode())
+
+          #FILE SEND TIME LOGIC
           else:
             #send time
             client_timestamp_str, client_message = message
