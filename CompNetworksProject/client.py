@@ -1,12 +1,11 @@
 import socket
+import os
+from datetime import datetime, timedelta
+
 from network_analysis import *
 
-<<<<<<< Updated upstream
-host = '35.203.120.179'
-=======
 
 host = '10.162.0.2'
->>>>>>> Stashed changes
 port = 3300
 
 
@@ -25,15 +24,6 @@ def setup_connection(message):
     client_tcp.send(data_to_send.encode('utf-8')) # byte object required
     data = client_tcp.recv(BUFFER_SIZE)
     yield print(f'The message received from the server: {data.decode("utf-8")}')
-<<<<<<< Updated upstream
-
-if __name__ == '__main__':
-  while True:
-    message = input('enter a message or q for quit: ')
-    if message == 'q':
-      quit()
-    next(setup_connection(message))
-=======
     yield print(f'The upload speed was: {get_upload_speed} MB/s')
     yield print(f'The download speed was: {get_download_speed} MB/s')
 
@@ -133,4 +123,3 @@ if __name__ == '__main__':
       break
     else:
       print("Invalid choice. Please try again.")
->>>>>>> Stashed changes
