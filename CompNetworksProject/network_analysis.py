@@ -18,7 +18,6 @@ def get_time_offset():
         print(e)
     return resp.offset
 
-
 def current_client_time(ntp_offset):
     current_date = datetime.now().date()
     initial_time = datetime.now().time()
@@ -29,14 +28,25 @@ def current_client_time(ntp_offset):
 
 # makes a calculation using the bytes recieved and time offset to get the upload speed in MB/s
 def get_upload_speed():
-    from server import bytes_recieved, bytes_sent, time_difference
+    from server import bytes_recieved, time_difference
     bytes_MB = bytes_recieved / (1024 * 1024)  # converts the bytes into MB
-    speed = bytes_MB / time_difference # calculates the upload speed in MB/s
-    return speed
+    upload_speed = bytes_MB / time_difference # calculates the upload speed in MB/s
+    return upload_speed
 
 # makes a calculation using the bytes sent and time offset to get the download speed in MB/s
 def get_download_speed():
-    from server import bytes_recieved, bytes_sent, time_difference
+    from server import bytes_sent, time_difference
     dlBytes_MB = bytes_sent / (1024 * 1024) # converts the bytes into MB
     download_speed = dlBytes_MB / time_difference # calculates the download speed in MB/s
     return download_speed
+
+#def get_third_statistic():
+
+def get_network_stats():
+    from server import time_difference
+    stats = {f"Upload speed: {get_upload_speed()} MB/s",
+              f"Download speed: {get_download_speed()} MB/s ",
+              f"File transfer time: {time_difference.total_seconds()} Seconds"
+              #"third statistic: {get_third_statistic}"
+            }
+    return stats

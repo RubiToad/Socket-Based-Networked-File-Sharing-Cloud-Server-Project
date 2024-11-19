@@ -2,8 +2,7 @@ import socket
 from datetime import datetime, timedelta
 import os
 from network_analysis import *  # add for timestamps
-
-host = '10.162.0.2'
+host = '10.142.0.2'
 port = 3300
 BUFFER_SIZE = 1024
 dashes = '----> '
