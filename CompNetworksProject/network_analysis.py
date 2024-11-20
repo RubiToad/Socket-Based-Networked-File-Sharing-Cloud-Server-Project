@@ -27,26 +27,27 @@ def current_client_time(ntp_offset):
     #print(get_time_offset())
 
 # makes a calculation using the bytes recieved and time offset to get the upload speed in MB/s
-def get_upload_speed():
-    from server import bytes_recieved, time_difference
+def get_upload_speed(bytes_recieved, time_difference):
     bytes_MB = bytes_recieved / (1024 * 1024)  # converts the bytes into MB
-    upload_speed = bytes_MB / time_difference # calculates the upload speed in MB/s
+    upload_speed = bytes_MB / time_difference.total_seconds() # calculates the upload speed in MB/s
     return upload_speed
 
 # makes a calculation using the bytes sent and time offset to get the download speed in MB/s
-def get_download_speed():
-    from server import bytes_sent, time_difference
+def get_download_speed(bytes_sent, time_difference):
     dlBytes_MB = bytes_sent / (1024 * 1024) # converts the bytes into MB
-    download_speed = dlBytes_MB / time_difference # calculates the download speed in MB/s
+    download_speed = dlBytes_MB / time_difference.total_seconds() # calculates the download speed in MB/s
     return download_speed
 
-#def get_third_statistic():
+def get_packet_loss(sent,recieved):
+    if sent == 0:
+        return 0
+    else:
+        return (sent - recieved) / (sent * 100)
 
-def get_network_stats():
-    from server import time_difference
-    stats = {f"Upload speed: {get_upload_speed()} MB/s",
-              f"Download speed: {get_download_speed()} MB/s ",
-              f"File transfer time: {time_difference.total_seconds()} Seconds"
-              #"third statistic: {get_third_statistic}"
+def get_network_stats(bytes_recieved,bytes_sent, packets_sent, packets_recieved, time_difference):
+    stats = {1: f"Upload speed: {get_upload_speed(bytes_recieved,time_difference)} MB/s",
+             2: f"Download speed: {get_download_speed(bytes_sent)} MB/s ",
+             3: f"File transfer time: {time_difference.total_seconds()} Seconds" ,
+             4: f"Packets lost: {get_packet_loss(packets_sent,packets_recieved)}"
             }
     return stats

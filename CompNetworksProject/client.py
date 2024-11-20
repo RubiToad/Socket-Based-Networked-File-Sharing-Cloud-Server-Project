@@ -71,8 +71,7 @@ def upload_file(file_path):
     # Receive server response and print speeds
     response = client_tcp.recv(BUFFER_SIZE).decode()
     print(f"The message received from the server: {response}")
-    print(f"The upload speed was: {get_upload_speed()} MB/s")
-    print(f"The download speed was: {get_download_speed()} MB/s")
+    print(get_network_stats())
 
 def display_menu():
   """Display a basic UI for interacting with the client."""
