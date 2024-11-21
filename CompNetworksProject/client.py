@@ -4,8 +4,13 @@ from datetime import datetime, timedelta
 
 from network_analysis import *
 
-host = '35.138.150.5'
+
+
+host = '10.162.0.2'
 port = 3300
+
+
+
 BUFFER_SIZE = 1024
 ntp_offset = get_time_offset()
 def setup_connection(message):
@@ -20,7 +25,8 @@ def setup_connection(message):
     client_tcp.send(data_to_send.encode('utf-8')) # byte object required
     data = client_tcp.recv(BUFFER_SIZE)
     yield print(f'The message received from the server: {data.decode("utf-8")}')
-    yield print(get_network_stats()) # display upload speed,download speed and file transfer time
+    yield print(f'The upload speed was: {get_upload_speed} MB/s')
+    yield print(f'The download speed was: {get_download_speed} MB/s')
 
 
 def upload_file(file_path):
@@ -71,14 +77,28 @@ def upload_file(file_path):
     # Receive server response and print speeds
     response = client_tcp.recv(BUFFER_SIZE).decode()
     print(f"The message received from the server: {response}")
-    print(get_network_stats())
+    print(f"The upload speed was: {get_upload_speed()} MB/s")
+    print(f"The download speed was: {get_download_speed()} MB/s")
+
+def delete_file(file_name):
+  with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_tcp:
+    client_tcp.connect((host, port))
+
+    #delete request
+    client_send_time = datetime.utcnow() + timedelta(seconds=ntp_offset)
+    client_send_time_str = client_send_time.strftime('%Y-%m-%d %H:%M:%S.%f')
+    metadata = f"DELETE {file_name}||{client_send_time_str}"
+    client_tcp.send(metadata.encode())
+    response = client_tcp.recv(BUFFER_SIZE).decode()
+    print(f"Server response: {response}")
 
 def display_menu():
   """Display a basic UI for interacting with the client."""
   print("\n--- File Sharing Client ---")
   print("1. Upload a File")
   print("2. Send a Message")
-  print("3. Exit")
+  print("3. Delete a File")
+  print("4. Exit")
 
 if __name__ == '__main__':
   while True:
@@ -95,6 +115,9 @@ if __name__ == '__main__':
       else:
         next(setup_connection(message))
     elif choice == '3':
+      deleted_file = input("Enter the name of the file you want to delete: ")
+      delete_file(deleted_file)
+    elif choice == '4':
       print("Exiting...")
       break
     else:
