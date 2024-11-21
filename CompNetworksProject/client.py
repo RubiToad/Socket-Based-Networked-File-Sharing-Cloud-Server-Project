@@ -3,6 +3,7 @@ import os
 from datetime import datetime, timedelta
 
 from network_analysis import *
+import requests
 
 
 
@@ -99,6 +100,16 @@ def display_menu():
   print("2. Send a Message")
   print("3. Delete a File")
   print("4. Exit")
+
+  def download_file(url, file_name):
+    response= requests.get(url, stream=True)
+    response.raise_for_status()
+
+    with open(file_name,'wb') as f:
+      for chunk in response.iter_content(1024):
+        f.write(chunk)
+
+    print(f"File downloaded to: {file_name}")
 
 if __name__ == '__main__':
   while True:
