@@ -7,9 +7,8 @@ import requests
 
 
 
-host = '10.162.0.2'
+host = '192.168.1.153'
 port = 3300
-
 
 
 BUFFER_SIZE = 1024
@@ -26,8 +25,8 @@ def setup_connection(message):
     client_tcp.send(data_to_send.encode('utf-8')) # byte object required
     data = client_tcp.recv(BUFFER_SIZE)
     yield print(f'The message received from the server: {data.decode("utf-8")}')
-    yield print(f'The upload speed was: {get_upload_speed} MB/s')
-    yield print(f'The download speed was: {get_download_speed} MB/s')
+    
+    
 
 
 def upload_file(file_path):
@@ -78,8 +77,7 @@ def upload_file(file_path):
     # Receive server response and print speeds
     response = client_tcp.recv(BUFFER_SIZE).decode()
     print(f"The message received from the server: {response}")
-    print(f"The upload speed was: {get_upload_speed()} MB/s")
-    print(f"The download speed was: {get_download_speed()} MB/s")
+    print(get_network_stats())
 
 def delete_file(file_name):
   with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_tcp:
@@ -93,13 +91,24 @@ def delete_file(file_name):
     response = client_tcp.recv(BUFFER_SIZE).decode()
     print(f"Server response: {response}")
 
+#function to list the directory that the user is currently in
+def view_directory(dir_request):
+    dir_request.sendall(b'dir()')
+
+    results = dir_request.recv(4096).decode()
+    content = results.split("\n")
+    print("Directory:")
+    for i in content:
+        print(i)
+
 def display_menu():
   """Display a basic UI for interacting with the client."""
   print("\n--- File Sharing Client ---")
   print("1. Upload a File")
   print("2. Send a Message")
   print("3. Delete a File")
-  print("4. Exit")
+  print("4. View Directory")
+  print("5. Exit")
 
   def download_file(url, file_name):
     response= requests.get(url, stream=True)
@@ -129,6 +138,8 @@ if __name__ == '__main__':
       deleted_file = input("Enter the name of the file you want to delete: ")
       delete_file(deleted_file)
     elif choice == '4':
+        view_directory()
+    elif choice == '5':
       print("Exiting...")
       break
     else:

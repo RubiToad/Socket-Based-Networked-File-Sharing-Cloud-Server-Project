@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import os
 from network_analysis import *  # add for timestamps
 
-host = '10.162.0.2'
+host = '0.0.0.0'
 port = 3300
 BUFFER_SIZE = 1024
 dashes = '----> '
@@ -100,8 +100,7 @@ with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as server_tcp:
             #send time
             client_timestamp_str, client_message = message
             client_timestamp = datetime.strptime(client_timestamp_str, '%Y-%m-%d %H:%M:%S.%f')
-            server_receive_time = datetime.now() + timedelta(seconds=ntp_offset)
-
+            server_receive_time = datetime.utcnow() + timedelta(seconds=ntp_offset)
             #subtract send time from receive time
             time_difference = server_receive_time - client_timestamp
             print(f'[*] {server_receive_time} - Data received: {client_message}')
@@ -110,6 +109,7 @@ with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as server_tcp:
             #convert to string
             #print('[*] Data received: {}'.format(data.decode('utf-8')))
             connection.send(dashes.encode('utf-8') + data)
+            packets_sent +=1 #counts sent packets for packet loss calculation
         except Exception as e:
           print(f"[!] Error processing data: {e}")
           connection.send(b'Error processing data.')
