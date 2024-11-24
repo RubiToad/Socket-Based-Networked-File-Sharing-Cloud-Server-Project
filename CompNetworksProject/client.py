@@ -7,7 +7,7 @@ import requests
 
 
 
-host = '10.162.0.2'
+host = '10.2.1.237'
 port = 3300
 
 
@@ -99,17 +99,38 @@ def display_menu():
   print("1. Upload a File")
   print("2. Send a Message")
   print("3. Delete a File")
-  print("4. Exit")
+  print("4. Download a File")
+  print("5. Exit")
 
-  def download_file(url, file_name):
-    response= requests.get(url, stream=True)
-    response.raise_for_status()
+def download_file(file_name):
+    """Request a file from the server and save it locally."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_tcp:
+        client_tcp.connect((host, port))
 
-    with open(file_name,'wb') as f:
-      for chunk in response.iter_content(1024):
-        f.write(chunk)
+        # Send a DOWNLOAD command with the file name
+        metadata = f"DOWNLOAD {file_name}||"
+        client_tcp.send(metadata.encode())
 
-    print(f"File downloaded to: {file_name}")
+        # Wait for the server's acknowledgment
+        ack = client_tcp.recv(BUFFER_SIZE).decode()
+        if ack != "READY":
+            print(f"Error: {ack}")
+            return
+
+        # Start receiving the file
+        print(f"Downloading file: {file_name}...")
+        file_path = os.path.join(os.getcwd(), file_name)  # Save in the current directory
+        with open(file_path, 'wb') as file:
+            while True:
+                chunk = client_tcp.recv(BUFFER_SIZE)
+                if chunk == b'DONE':  # End of file signal
+                    break
+                if not chunk:
+                    print("[!] Connection lost.")
+                    return
+                file.write(chunk)
+
+        print(f"File {file_name} downloaded successfully to {file_path}.")
 
 if __name__ == '__main__':
   while True:
@@ -129,6 +150,10 @@ if __name__ == '__main__':
       deleted_file = input("Enter the name of the file you want to delete: ")
       delete_file(deleted_file)
     elif choice == '4':
+      file_name=input("Enter the name of the file you want to download: ")
+      download_file(file_name)
+
+    elif choice == '5':
       print("Exiting...")
       break
     else:
