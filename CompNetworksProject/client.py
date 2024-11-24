@@ -26,8 +26,9 @@ def setup_connection(message):
     data = client_tcp.recv(BUFFER_SIZE)
     yield print(f'The message received from the server: {data.decode("utf-8")}')
     
-    
-
+def recieve_network_stats(connection):
+  network_stats = connection.recv(BUFFER_SIZE).decode("utf-8")
+  print(f"Network statistics: {network_stats}")
 
 def upload_file(file_path):
   """Function to upload a file (text, image, or audio) to the server."""
@@ -77,7 +78,6 @@ def upload_file(file_path):
     # Receive server response and print speeds
     response = client_tcp.recv(BUFFER_SIZE).decode()
     print(f"The message received from the server: {response}")
-    print(get_network_stats())
 
 def delete_file(file_name):
   with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_tcp:

@@ -18,12 +18,21 @@ if not os.path.exists(UPLOAD_DIR):
 packets_sent = 0
 packets_recieved = 0
 
+#collect network stats and send it back to the client for display
+def send_network_stats(connection,bytes_recieved,bytes_sent,packets_recieved,packets_sent,time_difference):
+  network_stats = get_network_stats(bytes_recieved, bytes_sent, packets_recieved,packets_sent,time_difference)
+  stats_to_send = []
+  for key,value in network_stats.items():
+    stats_to_send.append(f"{key}: {value}\n")
+
+  connection.send("".join(stats_to_send).encode("utf-8"))
+  
 def save_file(connection, file_name, file_size):
   #file saved to uploads folder
   received_size = 0
   with open(os.path.join(UPLOAD_DIR, file_name), 'wb') as f:
     while received_size < file_size:
-      chunk = connection.recv(BUFFER_SIZE)
+      chunk = connection.recv(min(BUFFER_SIZE, file_size - received_size))
       if not chunk:
         break
       f.write(chunk)
@@ -51,10 +60,9 @@ with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as server_tcp:
         data = connection.recv(BUFFER_SIZE)
         #add bytes recieved to tracker for upload speed calcuation
         bytes_recieved += len(data)
-        #add bytes sent to tracker for download speed calculation
-        bytes_sent += len(data)
         #add packets recieved to tracker for packet loss calculation
         packets_recieved += 1
+
         #verify received data
         if not data:
           break
@@ -62,6 +70,8 @@ with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as server_tcp:
         try:
           message = data.decode('utf-8').split('||')
           if message[0].startswith("UPLOAD"):
+            #start tracking the time for time difference calculation
+            start_time = datetime.utcnow() + timedelta(seconds=ntp_offset)
             #split data
             metadata = message[0].split()
             file_name = metadata[1]
@@ -70,16 +80,25 @@ with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as server_tcp:
 
             #ACK metadata receipt
             connection.send(b'READY')
+            packets_sent += 1
 
             #FILE SAVE LOGIC
             print(f"[*] Receiving {file_name} ({file_type}) of size {file_size} bytes")
             saved_size = save_file(connection, file_name, file_size)
+            bytes_recieved += saved_size #add bytes recieved in file size to tracker for upload speed calcuation
             if saved_size == file_size: #check that enough space is allocated?
               print(f"[*] {file_name} received and saved successfully.")
               connection.send(b'File uploaded successfully.')
+              #stop the timer for time difference calculation
+              end_time = datetime.utcnow() + timedelta(seconds=ntp_offset)
+              time_difference = end_time - start_time
+              packets_sent += 1
+              send_network_stats(connection,bytes_recieved,bytes_sent,packets_recieved,packets_sent,time_difference)
+
             else:
               print(f"[!] Error: Received size {saved_size} does not match expected size {file_size}")
               connection.send(b'File upload failed.')
+              packets_sent += 1
 
             #FILE DELETE LOGIC
           elif message[0].startswith("DELETE"):
@@ -91,9 +110,11 @@ with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as server_tcp:
               os.remove(file_path)
               print(f"[*] File {file_name} deleted successfully.")
               connection.send(f"File {file_name} deleted successfully.".encode())
+              packets_sent += 1
             else: #file doesn't exist so can't be deleted
               print(f"[!] File {file_name} does not exist.")
               connection.send(f"File {file_name} does not exist.".encode())
+              packets_sent += 1
 
           #FILE SEND TIME LOGIC
           else:
@@ -113,3 +134,4 @@ with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as server_tcp:
         except Exception as e:
           print(f"[!] Error processing data: {e}")
           connection.send(b'Error processing data.')
+          packets_sent += 1
