@@ -13,7 +13,7 @@ port = 3300
 
 
 
-BUFFER_SIZE = 1024
+BUFFER_SIZE = 25 * 1024 * 1024
 ntp_offset = get_time_offset()
 def setup_connection(message):
   with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_tcp:
