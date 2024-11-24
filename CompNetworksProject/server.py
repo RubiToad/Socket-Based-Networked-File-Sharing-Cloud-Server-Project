@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import os
 from network_analysis import *  # add for timestamps
 
-host = '10.162.0.2'
+host = '10.128.0.3'
 port = 3300
 BUFFER_SIZE = 1024
 dashes = '----> '
@@ -19,6 +19,26 @@ if not os.path.exists(UPLOAD_DIR):
 bytes_received = 0
 bytes_sent = 0
 
+def send_file(connection, file_name):
+  """Send a file to the client."""
+  file_path = os.path.join(UPLOAD_DIR, file_name)
+  if not os.path.exists(file_path):
+    connection.send(b'ERROR: File does not exist.')
+    return False
+
+  file_size = os.path.getsize(file_path)
+  connection.send(b'READY')  # Acknowledge readiness to send
+
+  # Send the file in chunks
+  with open(file_path, 'rb') as file:
+    while chunk := file.read(BUFFER_SIZE):
+      connection.send(chunk)
+  connection.send(b'DONE')  # Signal the end of the file transfer
+  print(f"[*] File {file_name} sent successfully.")
+  return True
+
+
+
 def save_file(connection, file_name, file_size):
   #file saved to uploads folder
   received_size = 0
@@ -30,6 +50,7 @@ def save_file(connection, file_name, file_size):
       f.write(chunk)
       received_size += len(chunk)
   return received_size
+
 
 def handle_client(connection, addr):
   #Handle communication with a single client
