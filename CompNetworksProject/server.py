@@ -44,7 +44,7 @@ def save_file(connection, file_name, file_size):
   received_size = 0
   with open(os.path.join(UPLOAD_DIR, file_name), 'wb') as f:
     while received_size < file_size:
-      chunk = connection.recv(BUFFER_SIZE)
+      chunk = connection.recv(min(BUFFER_SIZE, file_size - received_size))
       if not chunk:
         break
       f.write(chunk)
@@ -107,6 +107,14 @@ def handle_client(connection, addr):
           else:
             print(f"[!] File {file_name} does not exist.")
             connection.send(f"File {file_name} does not exist.".encode())
+
+        elif message[0].startswith("DOWNLOAD"):
+          # New download logic
+          file_name = message[0].split()[1]  # Extract the requested file name
+          if send_file(connection, file_name):
+            print(f"[*] File {file_name} sent successfully.")
+          else:
+            print(f"[!] File {file_name} could not be sent.")
 
         #FILE SEND TIME LOGIC
         else:
