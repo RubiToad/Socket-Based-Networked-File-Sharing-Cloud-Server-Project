@@ -7,7 +7,8 @@ import requests
 
 
 
-host = '10.2.1.237'
+
+host = '34.174.190.227'
 port = 3300
 
 
@@ -31,7 +32,7 @@ def setup_connection(message):
 
 
 def upload_file(file_path):
-  """Function to upload a file (text, image, or audio) to the server."""
+  # Function to upload a file (text, image, or audio) to the server.
   if not os.path.exists(file_path):
     print(f"File {file_path} does not exist.")
     return
@@ -94,7 +95,7 @@ def delete_file(file_name):
     print(f"Server response: {response}")
 
 def display_menu():
-  """Display a basic UI for interacting with the client."""
+  # Display a basic UI for interacting with the client.
   print("\n--- File Sharing Client ---")
   print("1. Upload a File")
   print("2. Send a Message")
