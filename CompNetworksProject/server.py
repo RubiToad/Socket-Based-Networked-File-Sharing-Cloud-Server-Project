@@ -27,13 +27,13 @@ def send_file(connection, file_name):
     return False
 
   file_size = os.path.getsize(file_path)
-  connection.send(b'READY')  # Acknowledge readiness to send
+  connection.send(f"READY {file_size}".encode())  # Acknowledge readiness to send
 
   # Send the file in chunks
   with open(file_path, 'rb') as file:
     while chunk := file.read(BUFFER_SIZE):
       connection.send(chunk)
-  connection.send(b'DONE')  # Signal the end of the file transfer
+  #connection.send(b'DONE')  # Signal the end of the file transfer
   print(f"[*] File {file_name} sent successfully.")
   return True
 
@@ -115,6 +115,24 @@ def handle_client(connection, addr):
             print(f"[*] File {file_name} sent successfully.")
           else:
             print(f"[!] File {file_name} could not be sent.")
+
+        if data.startswith("SUBFOLDER CREATE"):
+          _, folder_path = data.split(" ", 2)
+          full_path = os.path.join("uploads", folder_path.strip())
+          try:
+            os.makedirs(full_path, exist_ok=True)
+            connection.send(f"Subfolder '{folder_path}' created successfully.".encode())
+          except Exception as e:
+            connection.send(f"Error creating subfolder: {e}".encode())
+
+        elif data.startswith("SUBFOLDER DELETE"):
+          _, folder_path = data.split(" ", 2)
+          full_path = os.path.join("uploads", folder_path.strip())
+          try:
+            os.rmdir(full_path)  # Ensure the directory is empty
+            connection.send(f"Subfolder '{folder_path}' deleted successfully.".encode())
+          except Exception as e:
+            connection.send(f"Error deleting subfolder: {e}".encode())
 
         #FILE SEND TIME LOGIC
         else:
