@@ -1,9 +1,10 @@
 import socket
+import threading
 from datetime import datetime, timedelta
 import os
 from network_analysis import *  # add for timestamps
 
-host = '10.142.0.2'
+host = '10.162.0.2'
 port = 3300
 BUFFER_SIZE = 1024
 dashes = '----> '
@@ -26,7 +27,30 @@ def send_network_stats(connection,bytes_recieved,bytes_sent,packets_recieved,pac
     stats_to_send.append(f"{key}: {value}\n")
 
   connection.send("".join(stats_to_send).encode("utf-8"))
-  
+  #Initialize byte trackers for upload/download speeds
+bytes_received = 0
+bytes_sent = 0
+
+def send_file(connection, file_name):
+  """Send a file to the client."""
+  file_path = os.path.join(UPLOAD_DIR, file_name)
+  if not os.path.exists(file_path):
+    connection.send(b'ERROR: File does not exist.')
+    return False
+
+  file_size = os.path.getsize(file_path)
+  connection.send(f"READY {file_size}".encode())  # Acknowledge readiness to send
+
+  # Send the file in chunks
+  with open(file_path, 'rb') as file:
+    while chunk := file.read(BUFFER_SIZE):
+      connection.send(chunk)
+  #connection.send(b'DONE')  # Signal the end of the file transfer
+  print(f"[*] File {file_name} sent successfully.")
+  return True
+
+
+
 def save_file(connection, file_name, file_size):
   #file saved to uploads folder
   received_size = 0
@@ -39,33 +63,26 @@ def save_file(connection, file_name, file_size):
       received_size += len(chunk)
   return received_size
 
-with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as server_tcp:
-  server_tcp.bind((host,port))
-  #tracking bytes recieved for upload speed calculation
-  bytes_recieved = 0
-  #tracking bytes sent for download speed calculation
-  bytes_sent = 0
-  while True:
 
-    server_tcp.listen(6)
-    print('[*] Waiting for connection')
+def handle_client(connection, addr):
+  #Handle communication with a single client
+  global bytes_received, bytes_sent
 
-    #establish client connection
-    connection, addr = server_tcp.accept()
-    with connection:
-      print(f'[*] Accepted at {current_client_time(ntp_offset)}') # add for timestamps
-      print(f'[*] Established connection from IP {addr[0]} port: {addr[1]}')
-      while True:
-        #receive bytes
-        data = connection.recv(BUFFER_SIZE)
-        #add bytes recieved to tracker for upload speed calcuation
-        bytes_recieved += len(data)
-        #add packets recieved to tracker for packet loss calculation
-        packets_recieved += 1
+  print(f'[*] Established connection from IP {addr[0]} port: {addr[1]}')
+  print(f'[*] Accepted at {current_client_time(ntp_offset)}')  # Add for timestamps
 
-        #verify received data
-        if not data:
-          break
+  try:
+    while True:
+      # Receive data from client
+      data = connection.recv(BUFFER_SIZE)
+
+      # Track bytes received and sent
+      bytes_received += len(data)
+      bytes_sent += len(data)
+
+      # verify received data
+      if not data:
+        break
 
         try:
           message = data.decode('utf-8').split('||')
@@ -82,22 +99,22 @@ with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as server_tcp:
             connection.send(b'READY')
             packets_sent += 1
 
-            #FILE SAVE LOGIC
-            print(f"[*] Receiving {file_name} ({file_type}) of size {file_size} bytes")
-            saved_size = save_file(connection, file_name, file_size)
+          #FILE SAVE LOGIC
+          print(f"[*] Receiving {file_name} ({file_type}) of size {file_size} bytes")
+          saved_size = save_file(connection, file_name, file_size)
             bytes_recieved += saved_size #add bytes recieved in file size to tracker for upload speed calcuation
-            if saved_size == file_size: #check that enough space is allocated?
-              print(f"[*] {file_name} received and saved successfully.")
-              connection.send(b'File uploaded successfully.')
+          if saved_size == file_size: #check that enough space is allocated
+            print(f"[*] {file_name} received and saved successfully.")
+            connection.send(b'File uploaded successfully.')
               #stop the timer for time difference calculation
               end_time = datetime.utcnow() + timedelta(seconds=ntp_offset)
               time_difference = end_time - start_time
               packets_sent += 1
               send_network_stats(connection,bytes_recieved,bytes_sent,packets_recieved,packets_sent,time_difference)
 
-            else:
-              print(f"[!] Error: Received size {saved_size} does not match expected size {file_size}")
-              connection.send(b'File upload failed.')
+          else:
+            print(f"[!] Error: Received size {saved_size} does not match expected size {file_size}")
+            connection.send(b'File upload failed.')
               packets_sent += 1
 
             #FILE DELETE LOGIC
@@ -111,20 +128,20 @@ with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as server_tcp:
               print(f"[*] File {file_name} deleted successfully.")
               connection.send(f"File {file_name} deleted successfully.".encode())
               packets_sent += 1
+            elif message[0].startswith("LIST"):
+              try:
+                get_dir_content = os.listdir('.')
+                response = "\n".join(get_dir_content)
+                print(f"[*] preparing directory. {len(get_dir_content)} items in directory.")
+                connection.sendall(response.encode())
+                connection.sendall(b'END')
+                print("[*] Directory listing sent successfully.")
+              except Exception as e:
+                print(f"[!] Error while listing directory. {e}")
             else: #file doesn't exist so can't be deleted
               print(f"[!] File {file_name} does not exist.")
               connection.send(f"File {file_name} does not exist.".encode())
               packets_sent += 1
-          elif message[0].startswith("LIST"):
-            try:
-              get_dir_content = os.listdir('.')
-              response = "\n".join(get_dir_content)
-              print(f"[*] preparing directory. {len(get_dir_content)} items in directory.")
-              connection.sendall(response.encode())
-              connection.sendall(b'END')
-              print("[*] Directory listing sent successfully.")
-            except Exception as e:
-              print(f"[!] Error while listing directory. {e}")
 
           #FILE SEND TIME LOGIC
           else:
@@ -137,11 +154,37 @@ with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as server_tcp:
             print(f'[*] {server_receive_time} - Data received: {client_message}')
             print(f'[*] Time taken for data to send: {time_difference.total_seconds()} seconds')
 
-            #convert to string
-            #print('[*] Data received: {}'.format(data.decode('utf-8')))
-            connection.send(dashes.encode('utf-8') + data)
+          #convert to string
+          #print(f'[*] Data received: {}'.format(data.decode('utf-8')))
+          connection.send(dashes.encode('utf-8') + data)
             packets_sent +=1 #counts sent packets for packet loss calculation
-        except Exception as e:
-          print(f"[!] Error processing data: {e}")
-          connection.send(b'Error processing data.')
+
+      except Exception as e:
+        print(f"[!] Error processing data: {e}")
+        connection.send(b'Error processing data.')
           packets_sent += 1
+
+  except Exception as e:
+    print(f"[!] Connection error with {addr}: {e}")
+  finally:
+    print(f"[*] Connection with {addr} closed.")
+    connection.close()
+
+
+def start_server():
+  #Start the multithreaded server
+  with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
+    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server_socket.bind((host, port))
+    server_socket.listen(5)
+    print(f"[*] Server listening on {host}:{port}")
+
+    while True:
+      connection, addr = server_socket.accept()
+      # Create a new thread for each client connection
+      client_thread = threading.Thread(target=handle_client, args=(connection, addr))
+      client_thread.start()
+
+
+if __name__ == "__main__":
+  start_server()
