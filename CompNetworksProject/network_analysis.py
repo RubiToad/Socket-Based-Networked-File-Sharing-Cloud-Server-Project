@@ -45,12 +45,13 @@ def get_packet_loss(sent,recieved):
     if sent == 0:
         return 0
     else:
-        return (sent - recieved) / sent * 100
+        packet_loss = ((sent - recieved) / sent) * 100
+        return max(0,packet_loss)
 
 def get_network_stats(bytes_recieved,bytes_sent, packets_sent, packets_recieved, time_difference):
-    stats = {1: f"Upload speed: {get_upload_speed(bytes_recieved,time_difference)} MB/s",
-             2: f"Download speed: {get_download_speed(bytes_sent,time_difference)} MB/s ",
+    stats = {1: f"Upload speed: {get_upload_speed(bytes_recieved,time_difference):.2f} MB/s",
+             2: f"Download speed: {get_download_speed(bytes_sent,time_difference):.2f} MB/s ",
              3: f"File transfer time: {time_difference.total_seconds()} Seconds" ,
-             4: f"Packets lost: {get_packet_loss(packets_sent,packets_recieved)}"
+             4: f"Packets lost: {get_packet_loss(packets_sent,packets_recieved):.2f}"
             }
     return stats

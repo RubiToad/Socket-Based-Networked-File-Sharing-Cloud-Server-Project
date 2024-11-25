@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import os
 from network_analysis import *  # add for timestamps
 
-host = '10.162.0.2'
+host = '0.0.0.0'
 port = 3300
 BUFFER_SIZE = 1024
 dashes = '----> '
@@ -15,21 +15,23 @@ UPLOAD_DIR = 'uploads'
 if not os.path.exists(UPLOAD_DIR):
     os.makedirs(UPLOAD_DIR)
 
-#tracking packets sent and received for packet loss calculation
-packets_sent = 0
-packets_recieved = 0
+
 
 #collect network stats and send it back to the client for display
-def send_network_stats(connection,bytes_recieved,bytes_sent,packets_recieved,packets_sent,time_difference):
-  network_stats = get_network_stats(bytes_recieved, bytes_sent, packets_recieved,packets_sent,time_difference)
+def send_network_stats(connection,bytes_received,bytes_sent,packets_received,packets_sent,time_difference):
+  network_stats = get_network_stats(bytes_received, bytes_sent, packets_received,packets_sent,time_difference)
   stats_to_send = []
   for key,value in network_stats.items():
     stats_to_send.append(f"{key}: {value}\n")
 
   connection.send("".join(stats_to_send).encode("utf-8"))
-  #Initialize byte trackers for upload/download speeds
+
+#Initialize byte trackers for upload/download speeds
 bytes_received = 0
 bytes_sent = 0
+#tracking packets sent and received for packet loss calculation
+packets_sent = 0
+packets_recieved = 0
 
 def send_file(connection, file_name):
   """Send a file to the client."""
@@ -66,7 +68,7 @@ def save_file(connection, file_name, file_size):
 
 def handle_client(connection, addr):
   #Handle communication with a single client
-  global bytes_received, bytes_sent
+  global bytes_received, bytes_sent,packets_sent,packets_received
 
   print(f'[*] Established connection from IP {addr[0]} port: {addr[1]}')
   print(f'[*] Accepted at {current_client_time(ntp_offset)}')  # Add for timestamps
@@ -79,11 +81,14 @@ def handle_client(connection, addr):
       # Track bytes received and sent
       bytes_received += len(data)
       bytes_sent += len(data)
+      packets_sent = 0
+      packets_received = 0
+  
 
       # verify received data
       if not data:
         break
-
+      else:
         try:
           message = data.decode('utf-8').split('||')
           if message[0].startswith("UPLOAD"):
@@ -102,23 +107,23 @@ def handle_client(connection, addr):
           #FILE SAVE LOGIC
           print(f"[*] Receiving {file_name} ({file_type}) of size {file_size} bytes")
           saved_size = save_file(connection, file_name, file_size)
-            bytes_recieved += saved_size #add bytes recieved in file size to tracker for upload speed calcuation
+          bytes_received += saved_size #add bytes recieved in file size to tracker for upload speed calcuation
           if saved_size == file_size: #check that enough space is allocated
-            print(f"[*] {file_name} received and saved successfully.")
-            connection.send(b'File uploaded successfully.')
+              print(f"[*] {file_name} received and saved successfully.")
+              connection.send(b'File uploaded successfully.')
               #stop the timer for time difference calculation
               end_time = datetime.utcnow() + timedelta(seconds=ntp_offset)
               time_difference = end_time - start_time
               packets_sent += 1
-              send_network_stats(connection,bytes_recieved,bytes_sent,packets_recieved,packets_sent,time_difference)
+              send_network_stats(connection,bytes_received,bytes_sent,packets_recieved,packets_sent,time_difference)
 
           else:
-            print(f"[!] Error: Received size {saved_size} does not match expected size {file_size}")
-            connection.send(b'File upload failed.')
+              print(f"[!] Error: Received size {saved_size} does not match expected size {file_size}")
+              connection.send(b'File upload failed.')
               packets_sent += 1
-
-            #FILE DELETE LOGIC
-          elif message[0].startswith("DELETE"):
+          
+          #FILE DELETE LOGIC
+          if message[0].startswith("DELETE"):
             metadata = message[0].split()
             file_name = metadata[1]
             file_path = os.path.join(UPLOAD_DIR, file_name)
@@ -157,11 +162,11 @@ def handle_client(connection, addr):
           #convert to string
           #print(f'[*] Data received: {}'.format(data.decode('utf-8')))
           connection.send(dashes.encode('utf-8') + data)
-            packets_sent +=1 #counts sent packets for packet loss calculation
+          packets_sent +=1 #counts sent packets for packet loss calculation
 
-      except Exception as e:
-        print(f"[!] Error processing data: {e}")
-        connection.send(b'Error processing data.')
+        except Exception as e:
+          print(f"[!] Error processing data: {e}")
+          connection.send(b'Error processing data.')
           packets_sent += 1
 
   except Exception as e:
