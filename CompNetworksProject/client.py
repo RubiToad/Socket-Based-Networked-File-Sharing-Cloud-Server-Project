@@ -7,7 +7,7 @@ import requests
 
 
 
-host = '192.168.1.153'
+host = '35.237.251.209'
 port = 3300
 
 
@@ -91,15 +91,28 @@ def delete_file(file_name):
     response = client_tcp.recv(BUFFER_SIZE).decode()
     print(f"Server response: {response}")
 
-#function to list the directory that the user is currently in
-def view_directory(dir_request):
-    dir_request.sendall(b'dir()')
-
-    results = dir_request.recv(4096).decode()
-    content = results.split("\n")
-    print("Directory:")
-    for i in content:
-        print(i)
+#function to list the directory from the server
+def view_directory():
+    try:
+      with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_tcp:
+        client_tcp.connect((host, port))
+      
+      #send command to server
+        client_tcp.sendall(b'LIST')
+  
+        results = b""
+        while True:
+          chunk = client_tcp.recv(4096)
+          if chunk == b'END':
+            results += chunk[:-3]
+            break
+          results += chunk
+        content = results.decode().split("\n")
+        print("Directory:")
+        for i in content:
+          print(i)
+    except Exception as e:
+      print(f"[!] Error: directory couldn't be listed. details {e}")
 
 def display_menu():
   """Display a basic UI for interacting with the client."""

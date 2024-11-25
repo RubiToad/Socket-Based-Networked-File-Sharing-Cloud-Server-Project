@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import os
 from network_analysis import *  # add for timestamps
 
-host = '0.0.0.0'
+host = '10.142.0.2'
 port = 3300
 BUFFER_SIZE = 1024
 dashes = '----> '
@@ -115,6 +115,16 @@ with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as server_tcp:
               print(f"[!] File {file_name} does not exist.")
               connection.send(f"File {file_name} does not exist.".encode())
               packets_sent += 1
+          elif message[0].startswith("LIST"):
+            try:
+              get_dir_content = os.listdir('.')
+              response = "\n".join(get_dir_content)
+              print(f"[*] preparing directory. {len(get_dir_content)} items in directory.")
+              connection.sendall(response.encode())
+              connection.sendall(b'END')
+              print("[*] Directory listing sent successfully.")
+            except Exception as e:
+              print(f"[!] Error while listing directory. {e}")
 
           #FILE SEND TIME LOGIC
           else:
