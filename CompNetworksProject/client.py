@@ -6,7 +6,8 @@ from network_analysis import *
 import requests
 
 
-host = '34.174.142.12'
+
+host = '192.168.56.1'
 port = 3300
 
 
@@ -24,9 +25,10 @@ def setup_connection(message):
     client_tcp.send(data_to_send.encode('utf-8')) # byte object required
     data = client_tcp.recv(BUFFER_SIZE)
     yield print(f'The message received from the server: {data.decode("utf-8")}')
-    yield print(f'The upload speed was: {get_upload_speed} MB/s')
-    yield print(f'The download speed was: {get_download_speed} MB/s')
-
+    
+def recieve_network_stats(connection):
+  network_stats = connection.recv(BUFFER_SIZE).decode("utf-8")
+  print(f"Network statistics:\n{network_stats}")
 
 def upload_file(file_path):
   # Function to upload a file (text, image, or audio) to the server.
@@ -76,8 +78,7 @@ def upload_file(file_path):
     # Receive server response and print speeds
     response = client_tcp.recv(BUFFER_SIZE).decode()
     print(f"The message received from the server: {response}")
-    print(f"The upload speed was: {get_upload_speed()} MB/s")
-    print(f"The download speed was: {get_download_speed()} MB/s")
+    recieve_network_stats(client_tcp)
 
 def delete_file(file_name):
   with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_tcp:
@@ -91,6 +92,31 @@ def delete_file(file_name):
     response = client_tcp.recv(BUFFER_SIZE).decode()
     print(f"Server response: {response}")
 
+#function to list the directory from the server
+def view_directory():
+    try:
+      with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_tcp:
+        client_tcp.connect((host, port))
+      
+      #send command to server
+        client_tcp.sendall(b'LIST')
+  
+        results = b""
+        #recieve data in chunks
+        while True:
+          chunk = client_tcp.recv(4096)
+          if chunk == b'END':
+            results += chunk[:-3] # removes the END marker so it doesnt print with the last item
+            break
+          results += chunk
+        content = results.decode().split("\n")
+        #print directory
+        print("Directory:")
+        for i in content:
+          print(i)
+    except Exception as e:
+      print(f"[!] Error: directory couldn't be listed. details {e}")
+
 def display_menu():
   # Display a basic UI for interacting with the client.
   print("\n--- File Sharing Client ---")
@@ -100,7 +126,8 @@ def display_menu():
   print("4. Download a File")
   print("5. Create a Subfolder")
   print("6. Delete a Subfolder")
-  print("7. Exit")
+  print("7. View Directory")
+  print("8. Exit")
 
 def download_file(file_name):
     """Request a file from the server and save it locally."""
@@ -138,6 +165,7 @@ def download_file(file_name):
                 print(f"Progress: {received_size}/{file_size} bytes ({progress:.2f}%)", end='\r')
 
         print(f"\nFile {file_name} downloaded successfully to {file_path}.")
+        recieve_network_stats(client_tcp)
 
 def create_subfolder(folder_path):
     """Send a command to create a subfolder on the server."""
@@ -192,6 +220,8 @@ if __name__ == '__main__':
             folder_path = input("Enter the path of the subfolder to delete: ")
             delete_subfolder(folder_path)
         elif choice == '7':
+           view_directory()
+        elif choice == '8':
             print("Exiting...")
             break
         else:
