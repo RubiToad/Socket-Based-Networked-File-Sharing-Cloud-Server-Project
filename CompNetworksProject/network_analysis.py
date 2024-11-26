@@ -24,12 +24,12 @@ def current_client_time(ntp_offset):
     return f'{new_datetime}'
     #print(get_time_offset())
 
-# makes a calculation using the bytes recieved and time offset to get the upload speed in MB/s
-def get_upload_speed(bytes_recieved, time_difference):
-    if bytes_recieved == 0:
+# makes a calculation using the bytes received and time offset to get the upload speed in MB/s
+def get_upload_speed(bytes_received, time_difference):
+    if bytes_received == 0:
         return 0
     else:
-        bytes_MB = bytes_recieved / (1024 * 1024)  # converts the bytes into MB
+        bytes_MB = bytes_received / (1024 * 1024)  # converts the bytes into MB
         upload_speed = bytes_MB / time_difference.total_seconds() # calculates the upload speed in MB/s
         return upload_speed
 
@@ -41,17 +41,17 @@ def get_download_speed(bytes_sent, time_difference):
     download_speed = dlBytes_MB / time_difference.total_seconds() # calculates the download speed in MB/s
     return download_speed 
 
-def get_packet_loss(sent,recieved):
+def get_packet_loss(sent,received):
     if sent == 0:
         return 0
     else:
-        packet_loss = ((sent - recieved) / sent) * 100
+        packet_loss = ((sent - received) / sent) * 100
         return max(0,packet_loss)
 
-def get_network_stats(bytes_recieved,bytes_sent, packets_sent, packets_recieved, time_difference):
-    stats = {1: f"Upload speed: {get_upload_speed(bytes_recieved,time_difference):.2f} MB/s",
+def get_network_stats(bytes_received,bytes_sent, packets_sent, packets_received, time_difference):
+    stats = {1: f"Upload speed: {get_upload_speed(bytes_received,time_difference):.2f} MB/s",
              2: f"Download speed: {get_download_speed(bytes_sent,time_difference):.2f} MB/s ",
              3: f"File transfer time: {time_difference.total_seconds()} Seconds" ,
-             4: f"Packets lost: {get_packet_loss(packets_sent,packets_recieved):.2f}"
+             4: f"Packets lost: {get_packet_loss(packets_sent,packets_received):.2f}"
             }
     return stats
