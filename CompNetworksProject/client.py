@@ -6,7 +6,7 @@ from network_analysis import *
 
 
 
-host = '34.74.236.144'
+host = '34.174.75.93'
 port = 3300
 
 
@@ -171,8 +171,8 @@ def create_subfolder(folder_path):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_tcp:
         client_tcp.connect((host, port))
 
-        # Send a SUBFOLDER CREATE command
-        metadata = f"SUBFOLDER CREATE {folder_path}||"
+        # Send a SUBFOLDER CREATE command without || for the folder path
+        metadata = f"SUBFOLDER CREATE {folder_path}"
         client_tcp.send(metadata.encode())
 
         # Get the server's response
@@ -184,8 +184,8 @@ def delete_subfolder(folder_path):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_tcp:
         client_tcp.connect((host, port))
 
-        # Send a SUBFOLDER DELETE command
-        metadata = f"SUBFOLDER DELETE {folder_path}||"
+        # Send a SUBFOLDER DELETE command without || for the folder path
+        metadata = f"SUBFOLDER DELETE {folder_path}"
         client_tcp.send(metadata.encode())
 
         # Get the server's response

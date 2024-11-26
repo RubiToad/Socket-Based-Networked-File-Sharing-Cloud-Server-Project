@@ -67,8 +67,8 @@ def save_file(connection, file_name, file_size):
 
 
 def handle_client(connection, addr):
-  #Handle communication with a single client
-  global bytes_received, bytes_sent,packets_sent,packets_received
+  """Handle communication with a single client."""
+  global bytes_received, bytes_sent, packets_sent, packets_received
 
   print(f'[*] Established connection from IP {addr[0]} port: {addr[1]}')
   print(f'[*] Accepted at {current_client_time(ntp_offset)}')  # Add for timestamps
@@ -77,122 +77,89 @@ def handle_client(connection, addr):
     while True:
       # Receive data from client
       data = connection.recv(BUFFER_SIZE)
-
-      # Track bytes received and sent
-      bytes_received += len(data)
-      bytes_sent += len(data)
-      packets_sent = 0
-      packets_received = 0
-  
-      # verify received data
       if not data:
         break
-      else:
-        try:
-          message = data.decode('utf-8').split('||')
-          if message[0].startswith("UPLOAD"):
-            #start tracking the time for time difference calculation
-            start_time = datetime.utcnow() + timedelta(seconds=ntp_offset)
-            #split data
-            metadata = message[0].split()
-            file_name = metadata[1]
-            file_size = int(metadata[2])
-            file_type = metadata[3]
 
-            #ACK metadata receipt
-            connection.send(b'READY')
+      # Decode data for processing and split into parts
+      message = data.decode('utf-8').split('||')  # Split into command and additional data
+
+      try:
+        # Use message[0] (command) for all checks
+        if message[0].startswith("UPLOAD"):
+          # start tracking the time for time difference calculation
+          start_time = datetime.utcnow() + timedelta(seconds=ntp_offset)
+          metadata = message[0].split()
+          file_name = metadata[1]
+          file_size = int(metadata[2])
+          file_type = metadata[3]
+
+          connection.send(b'READY')
+
+          print(f"[*] Receiving {file_name} ({file_type}) of size {file_size} bytes")
+          saved_size = save_file(connection, file_name, file_size)
+          bytes_received += saved_size  # add bytes recieved in file size to tracker for upload speed calcuation
+          if saved_size == file_size:
+            print(f"[*] {file_name} received and saved successfully.")
+            connection.send(b'File uploaded successfully.')
+            # stop the timer for time difference calculation
+            end_time = datetime.utcnow() + timedelta(seconds=ntp_offset)
+            time_difference = end_time - start_time
             packets_sent += 1
-
-            #FILE SAVE LOGIC
-            print(f"[*] Receiving {file_name} ({file_type}) of size {file_size} bytes")
-            saved_size = save_file(connection, file_name, file_size)
-            bytes_received += saved_size #add bytes recieved in file size to tracker for upload speed calcuation
-            if saved_size == file_size: #check that enough space is allocated
-              print(f"[*] {file_name} received and saved successfully.")
-              connection.send(b'File uploaded successfully.')
-              #stop the timer for time difference calculation
-              end_time = datetime.utcnow() + timedelta(seconds=ntp_offset)
-              time_difference = end_time - start_time
-              packets_sent += 1
-              send_network_stats(connection,bytes_received,bytes_sent,packets_recieved,packets_sent,time_difference)
-
-            else:
-              print(f"[!] Error: Received size {saved_size} does not match expected size {file_size}")
-              connection.send(b'File upload failed.')
-              packets_sent += 1
-          
-          #FILE DELETE LOGIC
-          elif message[0].startswith("DELETE"):
-            metadata = message[0].split()
-            file_name = metadata[1]
-            file_path = os.path.join(UPLOAD_DIR, file_name)
-            #use os.remove() to delete file from server
-            if os.path.exists(file_path):
-              os.remove(file_path)
-              print(f"[*] File {file_name} deleted successfully.")
-              connection.send(f"File {file_name} deleted successfully.".encode())
-              packets_sent += 1
-            else: #file doesn't exist so can't be deleted
-              print(f"[!] File {file_name} does not exist.")
-              connection.send(f"File {file_name} does not exist.".encode())
-              packets_sent += 1
-          elif message[0].startswith("LIST"):
-            try:
-              get_dir_content = os.listdir('.')
-              response = "\n".join(get_dir_content)
-              print(f"[*] preparing directory. {len(get_dir_content)} items in directory.")
-              connection.sendall(response.encode())
-              connection.sendall(b'END')
-              print("[*] Directory listing sent successfully.")
-              break
-            except Exception as e:
-                print(f"[!] Error while listing directory. {e}")
-            
-          elif message[0].startswith("DOWNLOAD"):
-          # New download logic
-            file_name = message[0].split()[1]  # Extract the requested file name
-            if send_file(connection, file_name):
-              print(f"[*] File {file_name} sent successfully.")
-
-          elif data.startswith("SUBFOLDER CREATE"):
-            _, folder_path = data.split(" ", 2)
-            full_path = os.path.join("uploads", folder_path.strip())
-            try:
-              os.makedirs(full_path, exist_ok=True)
-              connection.send(f"Subfolder '{folder_path}' created successfully.".encode())
-            except Exception as e:
-              connection.send(f"Error creating subfolder: {e}".encode())
-          elif data.startswith("SUBFOLDER DELETE"):
-            _, folder_path = data.split(" ", 2)
-          full_path = os.path.join("uploads", folder_path.strip())
-          try:
-              os.rmdir(full_path)  # Ensure the directory is empty
-              connection.send(f"Subfolder '{folder_path}' deleted successfully.".encode())
-          except Exception as e:
-              connection.send(f"Error deleting subfolder: {e}".encode())
-
-
-          #FILE SEND TIME LOGIC
+            send_network_stats(connection, bytes_received, bytes_sent, packets_recieved, packets_sent, time_difference)
           else:
-            #send time
-            client_timestamp_str, client_message = message
-            client_timestamp = datetime.strptime(client_timestamp_str, '%Y-%m-%d %H:%M:%S.%f')
-            server_receive_time = datetime.utcnow() + timedelta(seconds=ntp_offset)
-            #subtract send time from receive time
-            time_difference = server_receive_time - client_timestamp
-            print(f'[*] {server_receive_time} - Data received: {client_message}')
-            print(f'[*] Time taken for data to send: {time_difference.total_seconds()} seconds')
+            connection.send(b'File upload failed.')
 
-          #convert to string
-          #print(f'[*] Data received: {}'.format(data.decode('utf-8')))
-          connection.send(dashes.encode('utf-8') + data)
-          packets_sent +=1 #counts sent packets for packet loss calculation
+        elif message[0].startswith("DELETE"):
+          file_name = message[0].split(" ", 1)[1].strip()
+          file_path = os.path.join(UPLOAD_DIR, file_name)
+          if os.path.exists(file_path):
+            os.remove(file_path)
+            connection.send(f"File '{file_name}' deleted successfully.".encode('utf-8'))
+          else:
+            connection.send(f"File '{file_name}' does not exist.".encode('utf-8'))
 
-        except Exception as e:
-          print(f"[!] Error processing data: {e}")
-          connection.send(b'Error processing data.')
-          packets_sent += 1
-  
+        elif message[0].startswith("SUBFOLDER CREATE"):
+          folder_path = message[0].split(" ", 2)[2].strip()
+          full_path = os.path.join(UPLOAD_DIR, folder_path)
+          try:
+            os.makedirs(full_path, exist_ok=True)
+            connection.send(f"Subfolder '{folder_path}' created successfully.".encode('utf-8'))
+          except Exception as e:
+            connection.send(f"Error creating subfolder: {e}".encode('utf-8'))
+
+        elif message[0].startswith("SUBFOLDER DELETE"):
+          folder_path = message[0].split(" ", 2)[2].strip()
+          full_path = os.path.join(UPLOAD_DIR, folder_path)
+          try:
+            if os.path.exists(full_path):
+              os.rmdir(full_path)
+              connection.send(f"Subfolder '{folder_path}' deleted successfully.".encode('utf-8'))
+            else:
+              connection.send(f"Subfolder '{folder_path}' does not exist.".encode('utf-8'))
+          except Exception as e:
+            connection.send(f"Error deleting subfolder: {e}".encode('utf-8'))
+
+        elif message[0].startswith("LIST"):
+          try:
+            dir_content = os.listdir('.')
+            response = "\n".join(dir_content)
+            connection.sendall(response.encode())
+            connection.sendall(b'END')
+          except Exception as e:
+            connection.send(f"Error listing directory: {e}".encode())
+
+        elif message[0].startswith("DOWNLOAD"):
+          file_name = message[0].split(" ", 1)[1]
+          if send_file(connection, file_name):
+            print(f"[*] File {file_name} sent successfully.")
+
+        else:
+          connection.send("Unknown command received.".encode('utf-8'))
+
+      except Exception as e:
+        print(f"[!] Error processing data: {e}")
+        connection.send(b'Error processing data.')
+
   except Exception as e:
     print(f"[!] Connection error with {addr}: {e}")
   finally:
