@@ -3,11 +3,10 @@ import os
 from datetime import datetime, timedelta
 
 from network_analysis import *
-import requests
 
 
 
-host = '192.168.56.1'
+host = '34.74.236.144'
 port = 3300
 
 
